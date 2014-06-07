@@ -118,7 +118,36 @@ void dbs_check_cpu(struct dbs_data *dbs_data, int cpu)
 		if (unlikely(!wall_time || wall_time < idle_time))
 			continue;
 
-		load = 100 * (wall_time - idle_time) / wall_time;
+		/*
+		 * If the CPU had gone completely idle, and a task just woke up
+		 * on this CPU now, it would be unfair to calculate 'load' the
+		 * usual way for this elapsed time-window, because it will show
+		 * near-zero load, irrespective of how CPU intensive that task
+		 * actually is. This is undesirable for latency-sensitive bursty
+		 * workloads.
+		 *
+		 * To avoid this, we reuse the 'load' from the previous
+		 * time-window and give this task a chance to start with a
+		 * reasonably high CPU frequency. (However, we shouldn't over-do
+		 * this copy, lest we get stuck at a high load (high frequency)
+		 * for too long, even when the current system load has actually
+		 * dropped down. So we perform the copy only once, upon the
+		 * first wake-up from idle.)
+		 *
+		 * Detecting this situation is easy: the governor's deferrable
+		 * timer would not have fired during CPU-idle periods. Hence
+		 * an unusually large 'wall_time' (as compared to the sampling
+		 * rate) indicates this scenario.
+		 */
+		if (unlikely(wall_time > (2 * sampling_rate)) &&
+						j_cdbs->copy_prev_load) {
+			load = j_cdbs->prev_load;
+			j_cdbs->copy_prev_load = false;
+		} else {
+			load = 100 * (wall_time - idle_time) / wall_time;
+			j_cdbs->prev_load = load;
+			j_cdbs->copy_prev_load = true;
+		}
 
 		if (load > max_load)
 			max_load = load;
@@ -389,11 +418,19 @@ if ((dbs_data->cdata->governor == GOV_ZZMOOVE) &&
 		for_each_cpu(j, policy->cpus) {
 			struct cpu_dbs_common_info *j_cdbs =
 				dbs_data->cdata->get_cpu_cdbs(j);
+			unsigned int prev_load;
 
 			j_cdbs->cpu = j;
 			j_cdbs->cur_policy = policy;
 			j_cdbs->prev_cpu_idle = get_cpu_idle_time(j,
 					       &j_cdbs->prev_cpu_wall, io_busy);
+
+			prev_load = (unsigned int)
+				(j_cdbs->prev_cpu_wall - j_cdbs->prev_cpu_idle);
+			j_cdbs->prev_load = 100 * prev_load /
+					(unsigned int) j_cdbs->prev_cpu_wall;
+			j_cdbs->copy_prev_load = true;
+
 			if (ignore_nice)
 				j_cdbs->prev_cpu_nice =
 					kcpustat_cpu(j).cpustat[CPUTIME_NICE];
