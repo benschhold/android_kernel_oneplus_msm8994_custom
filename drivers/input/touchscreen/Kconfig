@@ -1086,4 +1086,11 @@ config TOUCHSCREEN_SYNAPTICS_S3320_I2C_RMI
 config TOUCHSCREEN_SWEEP2SLEEP
 	bool "Enable kernel support for Sweep2Sleep"
 	default n
+
+config TOUCHBOOST_CONTROL
+	bool "Touch boost control"
+	depends on INPUT_TOUCHSCREEN
+	help
+	  Boeffla Kernels functionality to control input boost as touch boost
+	  in the Boeffla Config app
 endif
