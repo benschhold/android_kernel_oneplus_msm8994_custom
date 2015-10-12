@@ -54,6 +54,17 @@
 		_SMB_MASK((LEFT_BIT_POS) - (RIGHT_BIT_POS) + 1, \
 				(RIGHT_BIT_POS))
 
+#ifdef CONFIG_CHARGE_LEVEL
+#include "linux/charge_level.h"
+int ac_level = AC_CHARGE_LEVEL_DEFAULT;    // Set AC default charge level
+int usb_level  = USB_CHARGE_LEVEL_DEFAULT; // Set USB default charge level
+int charge_info_level_req = 0;	// requested charge current
+int charge_info_level_cur = 0;	// current charge current
+int charge_level = 0;			// 0 = stock charge logic, not 0 = current to set
+static bool set_by_charge_level = false;	// flag for detection of set values
+int charger_type = BK_CHARGER_NONE;
+#endif /* CONFIG_CHARGE_LEVEL */
+
 #ifdef VENDOR_EDIT
 #define AICL_INIT_FUNCTION_MASK BIT(7)
 
@@ -1915,6 +1926,9 @@ static int smbchg_set_usb_current_max(struct smbchg_chip *chip,
 out:
 	pr_smb(PR_STATUS, "usb type = %s current set to %d mA\n",
 			usb_type_name, chip->usb_max_current_ma);
+#ifdef CONFIG_CHARGE_LEVEL
+	charge_info_level_req = chip->usb_max_current_ma;
+#endif /* CONFIG_CHARGE_LEVEL */			
 	return rc;
 }
 
@@ -2064,6 +2078,7 @@ static int smbchg_set_fastchg_current_raw(struct smbchg_chip *chip,
 					CURRENT_500_MA, rc);
 		else
 			chip->fastchg_current_ma = 500;
+
 		return rc;
 	}
 
@@ -2817,8 +2832,18 @@ static int smbchg_set_thermal_limited_usb_current_max(struct smbchg_chip *chip,
 		return rc;
 	}
 
-	pr_err("AICL = %d, ICL = %d\n",
-			aicl_ma, chip->usb_max_current_ma);
+#ifdef CONFIG_CHARGE_LEVEL
+	if (set_by_charge_level) {
+		pr_err("AICL = %d, ICL = %d requested by charge level interface\n",
+				aicl_ma, chip->usb_max_current_ma);
+		set_by_charge_level = false;
+	} else {
+#endif /* CONFIG_CHARGE_LEVEL */
+		pr_err("AICL = %d, ICL = %d\n",
+				aicl_ma, chip->usb_max_current_ma);
+#ifdef CONFIG_CHARGE_LEVEL
+	}
+#endif /* CONFIG_CHARGE_LEVEL */
 	if (chip->usb_max_current_ma > aicl_ma && smbchg_is_aicl_complete(chip))
 		smbchg_rerun_aicl(chip);
 	smbchg_parallel_usb_check_ok(chip);
@@ -4297,6 +4322,25 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 		"inserted type = %d (%s)", usb_supply_type, usb_type_name);
 
 	smbchg_aicl_deglitch_wa_check(chip);
+	
+#ifdef CONFIG_CHARGE_LEVEL
+	if (usb_supply_type == POWER_SUPPLY_TYPE_USB_DCP)
+	{
+	    charge_level = ac_level;
+	    charger_type = BK_CHARGER_AC;
+	}
+	else if (usb_supply_type == POWER_SUPPLY_TYPE_USB)
+	{
+	    charge_level = usb_level;
+	    charger_type = BK_CHARGER_USB;
+	}
+	else
+	{
+	    charge_level = 0; // enable stock charging logic
+	    charger_type = BK_CHARGER_UNKNOWN;
+	    pr_info("Boeffla-Kernel: Unknown charger detected with ID %d", usb_supply_type);	}
+#endif /* CONFIG_CHARGE_LEVEL */
+	
 	if (chip->usb_psy) {
 		pr_smb(PR_MISC, "setting usb psy type = %d\n",
 				usb_supply_type);
@@ -4374,6 +4418,12 @@ void update_usb_status(struct smbchg_chip *chip, bool usb_present, bool force)
 		chip->time_out = false;// usb unplug agin ,set charge time_out false
 		chip->recharge_status=false;// usb unplug agin ,set charge time_out false
 		chip->usb_present = usb_present;
+#ifdef CONFIG_CHARGE_LEVEL
+		charge_level = 0;
+		charge_info_level_req = 0;
+		charge_info_level_cur = 0;
+		charger_type = BK_CHARGER_NONE;
+#endif /* CONFIG_CHARGE_LEVEL */
 		handle_usb_removal(chip);
 	}
 
@@ -7058,6 +7108,10 @@ static void qpnp_check_charger_uovp(struct smbchg_chip *chip)
 
 	pr_debug("%s %d %d\n", __func__, vchg_mv, chip->charger_status);
 
+#ifdef CONFIG_CHARGE_LEVEL
+	charge_info_level_cur = abs(get_prop_batt_current_now(chip)) / 1000;
+#endif /* CONFIG_CHARGE_LEVEL */
+
 	if(chip->charger_status == CHARGER_STATUS_GOOD) {
 		if(vchg_mv > CHARGER_SOFT_OVP_VOLTAGE ||
 			vchg_mv <= CHARGER_SOFT_UVP_VOLTAGE) {
@@ -7145,9 +7199,18 @@ static int handle_batt_temp_little_cold(struct smbchg_chip *chip)
 		if(qpnp_battery_temp_region_get(chip) == CV_BATTERY_TEMP_REGION__HOT ||
 			qpnp_battery_temp_region_get(chip) == CV_BATTERY_TEMP_REGION__COLD)
 			smbchg_charging_en(chip, 1);
-
-		chip->usb_psy->get_property(chip->usb_psy,
-								  POWER_SUPPLY_PROP_CURRENT_MAX, &ret);
+#ifdef CONFIG_CHARGE_LEVEL
+			if (charge_level != 0) {
+				set_by_charge_level = true;
+				chip->usb_target_current_ma = charge_level;
+				smbchg_set_usb_current_max(chip, charge_level);
+				smbchg_rerun_aicl(chip);
+				chip->usb_psy->get_property(chip->usb_psy,
+					POWER_SUPPLY_PROP_CURRENT_MAX, &ret);
+			} else {
+#endif /* CONFIG_CHARGE_LEVEL */
+				chip->usb_psy->get_property(chip->usb_psy,
+						  POWER_SUPPLY_PROP_CURRENT_MAX, &ret);
 			if(ret.intval / 1000 == 500) {
 
 				smbchg_set_usb_current_max(chip, ret.intval / 1000);
@@ -7178,7 +7241,9 @@ static int handle_batt_temp_little_cold(struct smbchg_chip *chip)
 						smbchg_rerun_aicl(chip);
 						}
 			}
-
+#ifdef CONFIG_CHARGE_LEVEL
+			}
+#endif /* CONFIG_CHARGE_LEVEL */
 		smbchg_float_voltage_set(chip, chip->temp_more_cool_vbatdel);
 		//qpnp_set_recharge(chip,100);//chip->temp_more_cool_vbatdel -3700);
 		smbchg_set_fastchg_current(chip, chip->temp_more_cool_current);
@@ -7218,6 +7283,16 @@ static int handle_batt_temp_cool(struct smbchg_chip *chip)
 		if(qpnp_battery_temp_region_get(chip) == CV_BATTERY_TEMP_REGION__HOT ||
 			qpnp_battery_temp_region_get(chip) == CV_BATTERY_TEMP_REGION__COLD)
 			smbchg_charging_en(chip, 1);
+#ifdef CONFIG_CHARGE_LEVEL
+			if (charge_level != 0) {
+				set_by_charge_level = true;
+				chip->usb_target_current_ma = charge_level;
+				smbchg_set_usb_current_max(chip, charge_level);
+				smbchg_rerun_aicl(chip);
+				chip->usb_psy->get_property(chip->usb_psy,
+					  POWER_SUPPLY_PROP_CURRENT_MAX, &ret);
+			} else {
+#endif /* CONFIG_CHARGE_LEVEL */
 				chip->usb_psy->get_property(chip->usb_psy,
 					  POWER_SUPPLY_PROP_CURRENT_MAX, &ret);
 				if(ret.intval / 1000 == 500) {
@@ -7248,7 +7323,9 @@ static int handle_batt_temp_cool(struct smbchg_chip *chip)
 								smbchg_rerun_aicl(chip);
 					}
 					}
-
+#ifdef CONFIG_CHARGE_LEVEL
+			}
+#endif /* CONFIG_CHARGE_LEVEL */
 		if(ret.intval / 1000 == 1500){
 
 		smbchg_float_voltage_set(chip, chip->temp_cool_vbatdel);
@@ -7297,7 +7374,17 @@ static int handle_batt_temp_little_cool(struct smbchg_chip *chip)
 		if(qpnp_battery_temp_region_get(chip) == CV_BATTERY_TEMP_REGION__HOT ||
 			qpnp_battery_temp_region_get(chip) == CV_BATTERY_TEMP_REGION__COLD)
 			smbchg_charging_en(chip, 1);
-		chip->usb_psy->get_property(chip->usb_psy,
+#ifdef CONFIG_CHARGE_LEVEL
+			if (charge_level != 0) {
+				set_by_charge_level = true;
+				chip->usb_target_current_ma = charge_level;
+				smbchg_set_usb_current_max(chip, charge_level);
+				smbchg_rerun_aicl(chip);
+				chip->usb_psy->get_property(chip->usb_psy,
+						  POWER_SUPPLY_PROP_CURRENT_MAX, &ret);
+			} else {
+#endif /* CONFIG_CHARGE_LEVEL */
+				chip->usb_psy->get_property(chip->usb_psy,
 						  POWER_SUPPLY_PROP_CURRENT_MAX, &ret);
 					if(ret.intval / 1000 == 500) {
 						smbchg_set_usb_current_max(chip, ret.intval / 1000);
@@ -7328,7 +7415,9 @@ static int handle_batt_temp_little_cool(struct smbchg_chip *chip)
 								smbchg_rerun_aicl(chip);
 						}
 						}
-
+#ifdef CONFIG_CHARGE_LEVEL
+			}
+#endif /* CONFIG_CHARGE_LEVEL */
 		if(ret.intval / 1000 == 1500) {
 			smbchg_float_voltage_set(chip, chip->temp_littel_cool_vbatdel);
 			if(get_prop_batt_voltage_now(chip)> 4180*1000) {
@@ -7453,7 +7542,17 @@ static int handle_batt_temp_normal(struct smbchg_chip *chip)
 
 		/* Update battery temp region */
 		qpnp_battery_temp_region_set(chip, CV_BATTERY_TEMP_REGION__NORMAL);
-		chip->usb_psy->get_property(chip->usb_psy,
+#ifdef CONFIG_CHARGE_LEVEL
+			if (charge_level != 0) {
+				set_by_charge_level = true;
+				chip->usb_target_current_ma = charge_level;
+				smbchg_set_usb_current_max(chip, charge_level);
+				smbchg_rerun_aicl(chip);
+				chip->usb_psy->get_property(chip->usb_psy,
+					  POWER_SUPPLY_PROP_CURRENT_MAX, &ret);
+			} else {
+#endif /* CONFIG_CHARGE_LEVEL */
+				chip->usb_psy->get_property(chip->usb_psy,
 						  POWER_SUPPLY_PROP_CURRENT_MAX, &ret);
 					if(ret.intval / 1000 == 500) {
 						smbchg_set_usb_current_max(chip, ret.intval / 1000);
@@ -7484,21 +7583,47 @@ static int handle_batt_temp_normal(struct smbchg_chip *chip)
 								smbchg_rerun_aicl(chip);
 						}
 						}
+#ifdef CONFIG_CHARGE_LEVEL
+			}
+#endif /* CONFIG_CHARGE_LEVEL */
 
+#ifdef CONFIG_CHARGE_LEVEL
+	if (charge_level != 0) 
+	{
+		if(ret.intval / 1000 == 1500)
+		   {
+			if (chip->aicl_current != 0 && chip->aicl_current <= 1500)
+			smbchg_set_fastchg_current(chip, charge_level);
+			else
+			smbchg_set_fastchg_current(chip, charge_level);
+			smbchg_float_voltage_set(chip, chip->temp_normal_vbatdel);
 
-    if(ret.intval / 1000 == 1500)
-       {
-		if (chip->aicl_current != 0 && chip->aicl_current <= 1500)
-		smbchg_set_fastchg_current(chip, chip->aicl_current);
-		else
-		smbchg_set_fastchg_current(chip, chip->temp_normal_current);
-		smbchg_float_voltage_set(chip, chip->temp_normal_vbatdel);
+				}else{
+			smbchg_set_fastchg_current(chip, charge_level);
+			smbchg_float_voltage_set(chip, chip->temp_normal_vbatdel);
 
-			}else{
-		smbchg_set_fastchg_current(chip, 500);
-		smbchg_float_voltage_set(chip, chip->temp_normal_vbatdel);
+			}
+	}
+	else
+	{
+#endif /* CONFIG_CHARGE_LEVEL */
+		if(ret.intval / 1000 == 1500)
+		   {
+			if (chip->aicl_current != 0 && chip->aicl_current <= 1500)
+			smbchg_set_fastchg_current(chip, chip->aicl_current);
+			else
+			smbchg_set_fastchg_current(chip, chip->temp_normal_current);
+			smbchg_float_voltage_set(chip, chip->temp_normal_vbatdel);
 
-		}
+				}else{
+			smbchg_set_fastchg_current(chip, 500);
+			smbchg_float_voltage_set(chip, chip->temp_normal_vbatdel);
+
+			}
+#ifdef CONFIG_CHARGE_LEVEL
+	}
+#endif /* CONFIG_CHARGE_LEVEL */
+
 			qpnp_set_recharge(chip,chip->resume_delta_mv);
 
 		/* Update the temperature boundaries */
@@ -7531,8 +7656,17 @@ static int handle_batt_temp_warm(struct smbchg_chip *chip)
 		if(qpnp_battery_temp_region_get(chip) == CV_BATTERY_TEMP_REGION__HOT ||
 			qpnp_battery_temp_region_get(chip) == CV_BATTERY_TEMP_REGION__COLD)
 			smbchg_charging_en(chip, 1);
-
-		chip->usb_psy->get_property(chip->usb_psy,
+#ifdef CONFIG_CHARGE_LEVEL
+			if (charge_level != 0) {
+				set_by_charge_level = true;
+				chip->usb_target_current_ma = charge_level;
+				smbchg_set_usb_current_max(chip, charge_level);
+				smbchg_rerun_aicl(chip);
+				chip->usb_psy->get_property(chip->usb_psy,
+					  POWER_SUPPLY_PROP_CURRENT_MAX, &ret);
+			} else {
+#endif /* CONFIG_CHARGE_LEVEL */
+				chip->usb_psy->get_property(chip->usb_psy,
 						  POWER_SUPPLY_PROP_CURRENT_MAX, &ret);
 					if(ret.intval / 1000 == 500) {
 						smbchg_set_usb_current_max(chip, ret.intval / 1000);
@@ -7562,7 +7696,9 @@ static int handle_batt_temp_warm(struct smbchg_chip *chip)
 								smbchg_rerun_aicl(chip);
 						}
 						}
-
+#ifdef CONFIG_CHARGE_LEVEL
+			}
+#endif /* CONFIG_CHARGE_LEVEL */
 
 		if(ret.intval / 1000 == 1500){
 		smbchg_float_voltage_set(chip, chip->temp_warm_vbatdel);
