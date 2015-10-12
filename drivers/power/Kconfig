@@ -483,6 +483,12 @@ config QPNP_FG
 	  fuel gauge. The state of charge is reported through a BMS power
 	  supply property and also sends uevents when the capacity is updated.
 
+config CHARGE_LEVEL
+       bool "Charge level interface"
+       default y
+       help
+         Allows configuration of ac and usb charging levels
+
 config PM8921_BMS
 	tristate "PM8921 Battery Monitoring System driver"
 	depends on MFD_PM8921_CORE
