@@ -87,6 +87,7 @@ obj-$(CONFIG_MSM_SYSTEM_HEALTH_MONITOR) += system_health_monitor.o
 obj-$(CONFIG_MSM_RTB) += msm_rtb-hotplug.o
 obj-$(CONFIG_QCOM_EARLY_RANDOM)	+= early_random.o
 obj-$(CONFIG_MSM_PACMAN)        += msm_pacman.o
+obj-$(CONFIG_BRICKED_HOTPLUG) += bricked_hotplug.o
 #VENDOR_EDIT
 obj-y += project_info.o
 obj-y += boot_mode.o
