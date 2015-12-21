@@ -1,4 +1,4 @@
-/*
+ /*
  *  drivers/cpufreq/cpufreq_darkness.c
  *
  *  Copyright (C)  2011 Samsung Electronics co. ltd
@@ -328,6 +328,7 @@ static int cpufreq_governor_darkness(struct cpufreq_policy *policy,
 
 		/*if (atomic_read(&min_freq_limit[cpu]) == 0)
 			atomic_set(&min_freq_limit[cpu], policy->min);
+
 		if (atomic_read(&max_freq_limit[cpu]) == 0)
 			atomic_set(&max_freq_limit[cpu], policy->max);*/
 
