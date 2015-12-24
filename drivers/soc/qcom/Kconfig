@@ -655,7 +655,11 @@ config MSM_LIMITER
 	  The MSM Frequency Limiter Driver controls max frequency limit for each CPU
 	  to desired value on suspend/resume
 
-
+config INTELLI_PLUG
+    bool "Enable intelli-plug cpu hotplug driver"
+    default
+	help
+	Generic Intelli-plug cpu hotplug driver for ARM SOCs
 
 source "drivers/soc/qcom/memshare/Kconfig"
 
