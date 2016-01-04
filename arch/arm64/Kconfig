@@ -11,6 +11,7 @@ config ARM64
 	select ARM_ARCH_TIMER
 	select ARM_GIC
 	select BUILDTIME_EXTABLE_SORT
+	select AUDIT_ARCH_COMPAT_GENERIC
 	select CLONE_BACKWARDS
 	select COMMON_CLK if !ARCH_MSM
 	select CPU_PM if (SUSPEND || CPU_IDLE)
@@ -525,6 +526,48 @@ config FORCE_MAX_ZONEORDER
 	int
 	default "14" if (ARM64_64K_PAGES && TRANSPARENT_HUGEPAGE)
 	default "11"
+
+config KEXEC_HARDBOOT
+	bool "Support hard booting to a kexec kernel"
+	depends on KEXEC
+	help
+	  Allows hard booting (i.e., with a full hardware reboot) to a kernel
+	  previously loaded in memory by kexec.  This works around the problem of
+	  soft-booted kernel hangs due to improper device shutdown and/or
+	  reinitialization.  Support is comprised of two components:
+
+	  First, a "hardboot" flag is added to the kexec syscall to force a hard
+	  reboot in relocate_new_kernel() (which requires machine-specific assembly
+	  code).  This also requires the kexec userspace tool to load the kexec'd
+	  kernel in memory region left untouched by the bootloader (i.e., not
+	  explicitly cleared and not overwritten by the boot kernel).  Just prior
+	  to reboot, the kexec kernel arguments are stashed in a machine-specific
+	  memory page that must also be preserved.  Note that this hardboot page
+	  need not be reserved during regular kernel execution.
+
+	  Second, the zImage decompresor of the boot (bootloader-loaded) kernel is
+	  modified to check the hardboot page for fresh kexec arguments, and if
+	  present, attempts to jump to the kexec'd kernel preserved in memory.
+
+	  Note that hardboot support is only required in the boot kernel and any
+	  kernel capable of performing a hardboot kexec.  It is _not_ required by a
+	  kexec'd kernel.
+
+
+
+config SECCOMP
+	bool "Enable seccomp to safely compute untrusted bytecode"
+	---help---
+	  This kernel feature is useful for number crunching applications
+	  that may need to compute untrusted bytecode during their
+	  execution. By using pipes or other transports made available to
+	  the process as file descriptors supporting the read/write
+	  syscalls, it's possible to isolate those applications in
+	  their own address space using seccomp. Once seccomp is
+	  enabled via prctl(PR_SET_SECCOMP), it cannot be disabled
+	  and the task is only allowed to execute a few safe syscalls
+	  defined by each seccomp mode.
+
 
 endmenu
 
