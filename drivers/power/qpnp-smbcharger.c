@@ -7486,19 +7486,43 @@ static int handle_batt_temp_normal(struct smbchg_chip *chip)
 						}
 
 
-    if(ret.intval / 1000 == 1500)
-       {
-		if (chip->aicl_current != 0 && chip->aicl_current <= 1500)
-		smbchg_set_fastchg_current(chip, chip->aicl_current);
-		else
-		smbchg_set_fastchg_current(chip, chip->temp_normal_current);
-		smbchg_float_voltage_set(chip, chip->temp_normal_vbatdel);
+#ifdef CONFIG_CHARGE_LEVEL
+	if (charge_level != 0) 
+	{
+		if(ret.intval / 1000 == 1500)
+		   {
+			if (chip->aicl_current != 0 && chip->aicl_current <= 1500)
+			smbchg_set_fastchg_current(chip, charge_level);
+			else
+			smbchg_set_fastchg_current(chip, charge_level);
+			smbchg_float_voltage_set(chip, chip->temp_normal_vbatdel);
 
-			}else{
-		smbchg_set_fastchg_current(chip, 500);
-		smbchg_float_voltage_set(chip, chip->temp_normal_vbatdel);
+				}else{
+			smbchg_set_fastchg_current(chip, charge_level);
+			smbchg_float_voltage_set(chip, chip->temp_normal_vbatdel);
 
-		}
+			}
+	}
+	else
+	{
+#endif /* CONFIG_CHARGE_LEVEL */
+		if(ret.intval / 1000 == 1500)
+		   {
+			if (chip->aicl_current != 0 && chip->aicl_current <= 1500)
+			smbchg_set_fastchg_current(chip, chip->aicl_current);
+			else
+			smbchg_set_fastchg_current(chip, chip->temp_normal_current);
+			smbchg_float_voltage_set(chip, chip->temp_normal_vbatdel);
+
+				}else{
+			smbchg_set_fastchg_current(chip, 500);
+			smbchg_float_voltage_set(chip, chip->temp_normal_vbatdel);
+
+			}
+#ifdef CONFIG_CHARGE_LEVEL
+	}
+#endif /* CONFIG_CHARGE_LEVEL */
+
 			qpnp_set_recharge(chip,chip->resume_delta_mv);
 
 		/* Update the temperature boundaries */
