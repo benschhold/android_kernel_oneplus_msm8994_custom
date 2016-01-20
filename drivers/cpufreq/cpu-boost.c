@@ -25,8 +25,11 @@
 
 #ifdef CONFIG_TOUCHBOOST_CONTROL
 #include <linux/export.h>
-unsigned int input_boost_status = 1;
-unsigned int input_boost_freq = 1344000;
+unsigned int touchboost_status_1 = 1;
+unsigned int touchboost_freq_1 = 1344000;
+unsigned int touchboost_status_2 = 0;
+unsigned int touchboost_freq_2 = 1344000;
+unsigned int touchboost_ms = 40;
 #endif
 
 struct cpu_sync {
@@ -45,7 +48,7 @@ extern unsigned int sysctl_thermal_aware_scheduling;
 module_param(sysctl_thermal_aware_scheduling, uint, 0644);
 #endif
 
-bool input_boost_enabled;
+static bool input_boost_enabled;
 
 static unsigned int input_boost_ms = 40;
 module_param(input_boost_ms, uint, 0644);
@@ -107,11 +110,22 @@ check_enable:
 }
 
 #ifdef CONFIG_TOUCHBOOST_CONTROL
-void set_touchboost_frequency(void)
+void set_touchboost_parameters(void)
 {
-	per_cpu(sync_info, 0).input_boost_freq = input_boost_freq;
+	per_cpu(sync_info, 0).input_boost_freq = (touchboost_status_1 == 1) ? touchboost_freq_1 : 0;
+	per_cpu(sync_info, 4).input_boost_freq = (touchboost_status_2 == 1) ? touchboost_freq_2 : 0;
+	input_boost_ms = touchboost_ms;
 }
-EXPORT_SYMBOL(set_touchboost_frequency);
+EXPORT_SYMBOL(set_touchboost_parameters);
+
+void get_touchboost_parameters(void)
+{
+	touchboost_status_1 = (per_cpu(sync_info, 0).input_boost_freq == 0) ? 0 : 1;
+	touchboost_status_2 = (per_cpu(sync_info, 4).input_boost_freq == 0) ? 0 : 1;
+	touchboost_ms = input_boost_ms;
+}
+EXPORT_SYMBOL(get_touchboost_parameters);
+
 #endif
 
 static int get_input_boost_freq(char *buf, const struct kernel_param *kp)
@@ -252,8 +266,8 @@ static void cpuboost_input_event(struct input_handle *handle,
 	u64 now;
 
 #ifdef CONFIG_TOUCHBOOST_CONTROL
-	// if touch boost (input boost) is switched off, do nothing
-	if (!input_boost_status)
+	// if touch boost (input boost) for both clusters is switched off, do nothing
+	if ((!touchboost_status_1) && (!touchboost_status_2))
 		return;
 #endif
 
