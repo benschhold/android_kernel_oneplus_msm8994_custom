@@ -461,7 +461,7 @@ if (dbs_data->cdata->governor == GOV_ELEMENTALX)
 		else if (policy->min > cpu_cdbs->cur_policy->cur)
 			__cpufreq_driver_target(cpu_cdbs->cur_policy,
 					policy->min, CPUFREQ_RELATION_L);
-		dbs_check_cpu(dbs_data, cpu);
+//		dbs_check_cpu(dbs_data, cpu);
 		mutex_unlock(&cpu_cdbs->timer_mutex);
 		break;
 	}
