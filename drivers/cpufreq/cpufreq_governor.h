@@ -126,8 +126,8 @@ static void *get_cpu_dbs_info_s(int cpu)				\
  * cdbs: common dbs
  * od_*: On-demand governor
  * cs_*: Conservative governor
- * zz_*: ZZMoove governor
  * ex_*: ElementalX governor
+ * zz_*: ZZMoove governor
  */
 
 /* Per cpu structures */
@@ -164,12 +164,12 @@ struct cs_cpu_dbs_info_s {
 	unsigned int enable:1;
 };
 
-struct ex_cpu_dbs_info_s {
-	struct cpu_dbs_common_info cdbs;
-	unsigned int down_floor;
-	unsigned int enable:1;
-};
-
+ struct ex_cpu_dbs_info_s {
+ 	struct cpu_dbs_common_info cdbs;
+ 	unsigned int down_floor;
+ 	unsigned int enable:1;
+ };
+ 
 struct zz_cpu_dbs_info_s {
 	struct cpu_dbs_common_info cdbs;
 	unsigned int down_skip;
@@ -199,16 +199,15 @@ struct cs_dbs_tuners {
 };
 
 struct ex_dbs_tuners {
-	unsigned int ignore_nice_load;
-	unsigned int sampling_rate;
-	unsigned int up_threshold;
-	unsigned int down_differential;
-	unsigned int active_floor_freq;
-	unsigned int sampling_down_factor;
-	unsigned int powersave;
-};
-
-
+ 	unsigned int ignore_nice_load;
+ 	unsigned int sampling_rate;
+ 	unsigned int up_threshold;
+ 	unsigned int down_differential;
+ 	unsigned int active_floor_freq;
+ 	unsigned int sampling_down_factor;
+ 	unsigned int powersave;
+ };
+ 
 struct zz_dbs_tuners {
 	unsigned int ignore_nice_load;
 	unsigned int sampling_rate;
@@ -232,8 +231,8 @@ struct common_dbs_data {
 	/* Common across governors */
 	#define GOV_ONDEMAND		0
 	#define GOV_CONSERVATIVE	1
-        #define GOV_ZZMOOVE      	2
-	#define GOV_ELEMENTALX		3
+	#define GOV_ELEMENTALX		2
+	#define GOV_ZZMOOVE		3
 	int governor;
 	struct attribute_group *attr_group_gov_sys; /* one governor - system */
 	struct attribute_group *attr_group_gov_pol; /* one governor - policy */
@@ -249,9 +248,9 @@ struct common_dbs_data {
 	void (*gov_dbs_timer)(struct work_struct *work);
 	void (*gov_check_cpu)(int cpu, unsigned int load);
 	int (*init)(struct dbs_data *dbs_data);
-	int (*init_ex)(struct dbs_data *dbs_data, struct cpufreq_policy *policy);
+  	int (*init_ex)(struct dbs_data *dbs_data, struct cpufreq_policy *policy);
 	int (*init_zz)(struct dbs_data *dbs_data, struct cpufreq_policy *policy);
-        void (*exit)(struct dbs_data *dbs_data);
+	void (*exit)(struct dbs_data *dbs_data);
 
 	/* Governor specific ops, see below */
 	void *gov_ops;
@@ -272,7 +271,7 @@ struct dbs_data {
 	unsigned int max_scaling_freq_hard;
 	unsigned int max_scaling_freq_soft;
 	unsigned int scaling_mode_up;
-	unsigned int scaling_mode_down;
+	unsigned int scaling_mode_down;	
 	int usage_count;
 	void *tuners;
 
@@ -291,10 +290,10 @@ struct od_ops {
 struct cs_ops {
 	struct notifier_block *notifier_block;
 };
-
 struct zz_ops {
 	struct notifier_block *notifier_block;
 };
+
 
 
 static inline int delay_for_sampling_rate(unsigned int sampling_rate)
@@ -335,3 +334,4 @@ void od_register_powersave_bias_handler(unsigned int (*f)
 		unsigned int powersave_bias);
 void od_unregister_powersave_bias_handler(void);
 #endif /* _CPUFREQ_GOVERNOR_H */
+
