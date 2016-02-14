@@ -126,8 +126,8 @@ static void *get_cpu_dbs_info_s(int cpu)				\
  * cdbs: common dbs
  * od_*: On-demand governor
  * cs_*: Conservative governor
- * ex_*: ElementalX governor
  * zz_*: ZZMoove governor
+ * ex_*: ElementalX governor
  */
 
 /* Per cpu structures */
@@ -136,13 +136,6 @@ struct cpu_dbs_common_info {
 	u64 prev_cpu_idle;
 	u64 prev_cpu_wall;
 	u64 prev_cpu_nice;
-	/*
-	 * Used to keep track of load in the previous interval. However, when
-	 * explicitly set to zero, it is used as a flag to ensure that we copy
-	 * the previous load to the current interval only once, upon the first
-	 * wake-up from idle.
-	 */
-	unsigned int prev_load;
 	struct cpufreq_policy *cur_policy;
 	struct delayed_work work;
 	/*
@@ -184,6 +177,8 @@ struct zz_cpu_dbs_info_s {
 	unsigned int enable:1;
 };
 
+
+
 /* Per policy Governors sysfs tunables */
 struct od_dbs_tuners {
 	unsigned int ignore_nice_load;
@@ -213,6 +208,7 @@ struct ex_dbs_tuners {
 	unsigned int powersave;
 };
 
+
 struct zz_dbs_tuners {
 	unsigned int ignore_nice_load;
 	unsigned int sampling_rate;
@@ -229,14 +225,15 @@ struct zz_dbs_tuners {
 	unsigned int afs_threshold4;
 };
 
+
 /* Common Governor data across policies */
 struct dbs_data;
 struct common_dbs_data {
 	/* Common across governors */
 	#define GOV_ONDEMAND		0
 	#define GOV_CONSERVATIVE	1
-	#define GOV_ELEMENTALX		2
-	#define GOV_ZZMOOVE		3
+        #define GOV_ZZMOOVE      	2
+	#define GOV_ELEMENTALX		3
 	int governor;
 	struct attribute_group *attr_group_gov_sys; /* one governor - system */
 	struct attribute_group *attr_group_gov_pol; /* one governor - policy */
@@ -254,7 +251,7 @@ struct common_dbs_data {
 	int (*init)(struct dbs_data *dbs_data);
 	int (*init_ex)(struct dbs_data *dbs_data, struct cpufreq_policy *policy);
 	int (*init_zz)(struct dbs_data *dbs_data, struct cpufreq_policy *policy);
-	void (*exit)(struct dbs_data *dbs_data);
+        void (*exit)(struct dbs_data *dbs_data);
 
 	/* Governor specific ops, see below */
 	void *gov_ops;
@@ -299,6 +296,7 @@ struct zz_ops {
 	struct notifier_block *notifier_block;
 };
 
+
 static inline int delay_for_sampling_rate(unsigned int sampling_rate)
 {
 	int delay = usecs_to_jiffies(sampling_rate);
@@ -324,8 +322,6 @@ static ssize_t show_sampling_rate_min_gov_pol				\
 	struct dbs_data *dbs_data = policy->governor_data;		\
 	return sprintf(buf, "%u\n", dbs_data->min_sampling_rate);	\
 }
-
-extern struct mutex cpufreq_governor_lock;
 
 void dbs_check_cpu(struct dbs_data *dbs_data, int cpu);
 bool need_load_eval(struct cpu_dbs_common_info *cdbs,
