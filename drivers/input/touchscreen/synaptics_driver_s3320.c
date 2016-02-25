@@ -210,6 +210,8 @@ static struct workqueue_struct *synaptics_wq = NULL;
 static struct workqueue_struct *synaptics_report = NULL;
 static struct proc_dir_entry *prEntry_tp = NULL;
 static struct proc_dir_entry *prEntry_sweep_wake_tap = NULL;
+static struct input_dev * boeffla_syn_pwrdev;
+static DEFINE_MUTEX(boeffla_syn_pwrkeyworklock);
 
 
 #ifdef SUPPORT_GESTURE
@@ -379,6 +381,27 @@ struct synaptics_optimize_data{
 	const struct i2c_device_id *dev_id;
 };
 static struct synaptics_optimize_data optimize_data;
+
+
+static void boeffla_syn_presspwr(struct work_struct * boeffla_syn_presspwr_work)
+{
+	if (!mutex_trylock(&boeffla_syn_pwrkeyworklock))
+		return;
+
+	input_event(boeffla_syn_pwrdev, EV_KEY, KEY_POWER, 1);
+	input_event(boeffla_syn_pwrdev, EV_SYN, 0, 0);
+	msleep(60);
+
+	input_event(boeffla_syn_pwrdev, EV_KEY, KEY_POWER, 0);
+	input_event(boeffla_syn_pwrdev, EV_SYN, 0, 0);
+	msleep(60);
+
+    mutex_unlock(&boeffla_syn_pwrkeyworklock);
+	return;
+}
+static DECLARE_WORK(boeffla_syn_presspwr_work, boeffla_syn_presspwr);
+
+
 static void synaptics_ts_probe_func(struct work_struct *w)
 {
 	struct i2c_client *client_optimize = optimize_data.client;
@@ -1220,21 +1243,21 @@ static void gesture_judge(struct synaptics_ts_data *ts)
         LeftVee_gesture,RightVee_gesture,DouSwip_gesture,Circle_gesture,UpVee_gesture,DouTap_gesture);
 	if((gesture == DouTap && DouTap_gesture)||(gesture == RightVee && RightVee_gesture)\
         ||(gesture == LeftVee && LeftVee_gesture)||(gesture == UpVee && UpVee_gesture)\
-        ||(gesture == Left2RightSwip && Left2RightSwip_gesture)||(gesture == Right2LeftSwip && Right2LeftSwip_gesture)\
-        ||(gesture == Up2DownSwip && Up2DownSwip_gesture)||(gesture == Down2UpSwip && Down2UpSwip_gesture)\
         ||(gesture == Circle && Circle_gesture)||(gesture == DouSwip && DouSwip_gesture)){
-
-		// simulate double tap gesture in case we detected a horizontal or vertical swipe
-		if ((gesture == Left2RightSwip) || (gesture == Right2LeftSwip) ||
-			(gesture == Up2DownSwip) || (gesture == Down2UpSwip))
-			gesture = DouTap;
-
 		gesture_upload = gesture;
 		input_report_key(ts->input_dev, keyCode, 1);
 		input_sync(ts->input_dev);
 		input_report_key(ts->input_dev, keyCode, 0);
 		input_sync(ts->input_dev);
-	}else{
+	}
+    else if ((gesture == Left2RightSwip && Left2RightSwip_gesture)||(gesture == Right2LeftSwip && Right2LeftSwip_gesture)\
+        ||(gesture == Up2DownSwip && Up2DownSwip_gesture)||(gesture == Down2UpSwip && Down2UpSwip_gesture))
+    {
+		// press powerkey
+		schedule_work(&boeffla_syn_presspwr_work);
+	}
+	else
+	{
 
 		ret = i2c_smbus_read_i2c_block_data( ts->client, F12_2D_CTRL20, 3, &(reportbuf[0x0]) );
 		ret = reportbuf[2] & 0x20;
@@ -1462,7 +1485,8 @@ static ssize_t tp_gesture_write_func(struct file *file, const char __user *buffe
     DouTap_gesture = (buf[0] & BIT7)?1:0; //double tap
 
 	if(DouTap_gesture||Circle_gesture||UpVee_gesture||LeftVee_gesture\
-        ||RightVee_gesture||DouSwip_gesture)
+        ||RightVee_gesture||DouSwip_gesture\
+        ||Left2RightSwip_gesture||Right2LeftSwip_gesture||Down2UpSwip_gesture||Up2DownSwip_gesture)
 	{
 		ts->double_enable = 1;
 		syna_use_gesture = 1;
@@ -1489,6 +1513,8 @@ static ssize_t tp_sweep_wake_read_func(struct file *file, char __user *user_buf,
 static ssize_t tp_sweep_wake_write_func(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
 {
 	char buf[10];
+	struct synaptics_ts_data *ts = ts_g;
+
 	if( count > 2)
 		return count;
 	if( copy_from_user(buf, buffer, count) ){
@@ -1500,6 +1526,20 @@ static ssize_t tp_sweep_wake_write_func(struct file *file, const char __user *bu
 	Right2LeftSwip_gesture = (buf[0] & BIT0) ? 1 : 0;
 	Up2DownSwip_gesture = (buf[0] & BIT0) ? 1 : 0;
 	Down2UpSwip_gesture = (buf[0] & BIT0) ? 1 : 0;
+
+	if(DouTap_gesture||Circle_gesture||UpVee_gesture||LeftVee_gesture\
+        ||RightVee_gesture||DouSwip_gesture\
+        ||Left2RightSwip_gesture||Right2LeftSwip_gesture||Down2UpSwip_gesture||Up2DownSwip_gesture)
+	{
+		ts->double_enable = 1;
+		syna_use_gesture = 1;
+	}
+	else
+    {
+        ts->double_enable = 0;
+		syna_use_gesture = 0;
+    }
+
 	return count;
 }
 
@@ -3575,11 +3615,32 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
 
 static int __init tpd_driver_init(void)
 {
+	int rc = 0;
+
 	printk("Synaptics:%s is called\n", __func__);
 	if( i2c_add_driver(&tpd_i2c_driver)!= 0 ){
 		TPDTM_DMESG("unable to add i2c driver.\n");
 		return -1;
 	}
+
+	// allocate and register input device for sending power key events
+	boeffla_syn_pwrdev = input_allocate_device();
+	if (!boeffla_syn_pwrdev)
+	{
+		pr_err("Can't allocate suspend autotest power button\n");
+		return -EFAULT;
+	}
+
+	input_set_capability(boeffla_syn_pwrdev, EV_KEY, KEY_POWER);
+	boeffla_syn_pwrdev->name = "boeffla_syn_pwrkey";
+	boeffla_syn_pwrdev->phys = "boeffla_syn_pwrkey/input0";
+	rc = input_register_device(boeffla_syn_pwrdev);
+	if (rc)
+	{
+		pr_err("%s: input_register_device err=%d\n", __func__, rc);
+		return -EFAULT;
+	}
+
 	return 0;
 }
 
