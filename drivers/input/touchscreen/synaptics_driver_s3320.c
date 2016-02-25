@@ -154,6 +154,8 @@ struct test_header {
 #define BIT6 (0x1 << 6)
 #define BIT7 (0x1 << 7)
 
+#define IMPLEMENTED_FUNCTIONS	(BIT0 | BIT1)
+
 int LeftVee_gesture = 0; //">"
 int RightVee_gesture = 0; //"<"
 int DouSwip_gesture = 0; // "||"
@@ -169,6 +171,8 @@ int Down2UpSwip_gesture =0;//"down to up |"
 
 int Wgestrue_gesture =0;//"(W)"
 int Mgestrue_gesture =0;//"(M)"
+
+int DisableDouTapVibration = 0;
 
 #endif
 //ruanbanmao@BSP add for tp gesture 2015-05-06, end
@@ -211,6 +215,7 @@ static struct workqueue_struct *synaptics_wq = NULL;
 static struct workqueue_struct *synaptics_report = NULL;
 static struct proc_dir_entry *prEntry_tp = NULL;
 static struct proc_dir_entry *prEntry_sweep_wake_tap = NULL;
+static struct proc_dir_entry *prEntry_sweep_wake_tap_implemented = NULL;
 static struct input_dev * boeffla_syn_pwrdev;
 static DEFINE_MUTEX(boeffla_syn_pwrkeyworklock);
 
@@ -1245,7 +1250,7 @@ static void gesture_judge(struct synaptics_ts_data *ts)
 
     TPD_DEBUG("gesture suport LeftVee:%d RightVee:%d DouSwip:%d Circle:%d UpVee:%d DouTap:%d\n",\
         LeftVee_gesture,RightVee_gesture,DouSwip_gesture,Circle_gesture,UpVee_gesture,DouTap_gesture);
-	if((gesture == DouTap && DouTap_gesture)||(gesture == RightVee && RightVee_gesture)\
+	if((gesture == DouTap && DouTap_gesture && !DisableDouTapVibration)||(gesture == RightVee && RightVee_gesture)\
         ||(gesture == LeftVee && LeftVee_gesture)||(gesture == UpVee && UpVee_gesture)\
         ||(gesture == Circle && Circle_gesture)||(gesture == DouSwip && DouSwip_gesture)){
 		gesture_upload = gesture;
@@ -1254,8 +1259,9 @@ static void gesture_judge(struct synaptics_ts_data *ts)
 		input_report_key(ts->input_dev, keyCode, 0);
 		input_sync(ts->input_dev);
 	}
-    else if ((gesture == Left2RightSwip && Left2RightSwip_gesture)||(gesture == Right2LeftSwip && Right2LeftSwip_gesture)\
-        ||(gesture == Up2DownSwip && Up2DownSwip_gesture)||(gesture == Down2UpSwip && Down2UpSwip_gesture))
+    else if ((gesture == DouTap && DouTap_gesture && DisableDouTapVibration) ||
+			(gesture == Left2RightSwip && Left2RightSwip_gesture)||(gesture == Right2LeftSwip && Right2LeftSwip_gesture)\
+			||(gesture == Up2DownSwip && Up2DownSwip_gesture)||(gesture == Down2UpSwip && Down2UpSwip_gesture))
     {
 		// press powerkey
 		schedule_work(&boeffla_syn_presspwr_work);
@@ -1577,11 +1583,20 @@ static ssize_t tp_gesture_write_func(struct file *file, const char __user *buffe
 	return count;
 }
 
+static ssize_t tp_sweep_wake_implemented_read_func(struct file *file, char __user *user_buf, size_t count, loff_t *ppos)
+{
+	int ret = 0;
+	char page[PAGESIZE];
+	ret = sprintf(page, "%d\n", IMPLEMENTED_FUNCTIONS);
+	ret = simple_read_from_buffer(user_buf, count, ppos, page, strlen(page));
+	return ret;
+}
+
 static ssize_t tp_sweep_wake_read_func(struct file *file, char __user *user_buf, size_t count, loff_t *ppos)
 {
 	int ret = 0;
 	char page[PAGESIZE];
-	ret = sprintf(page, "%d\n", Left2RightSwip_gesture);
+	ret = sprintf(page, "%d\n", Left2RightSwip_gesture + (DisableDouTapVibration * BIT1));
 	ret = simple_read_from_buffer(user_buf, count, ppos, page, strlen(page));
 	return ret;
 }
@@ -1602,6 +1617,8 @@ static ssize_t tp_sweep_wake_write_func(struct file *file, const char __user *bu
 	Right2LeftSwip_gesture = (buf[0] & BIT0) ? 1 : 0;
 	Up2DownSwip_gesture = (buf[0] & BIT0) ? 1 : 0;
 	Down2UpSwip_gesture = (buf[0] & BIT0) ? 1 : 0;
+
+	DisableDouTapVibration = (buf[0] & BIT1) ? 1 : 0;
 
 	if(DouTap_gesture||Circle_gesture||UpVee_gesture||LeftVee_gesture\
         ||RightVee_gesture||DouSwip_gesture\
@@ -1647,6 +1664,12 @@ static const struct file_operations tp_gesture_proc_fops = {
 static const struct file_operations tp_sweep_wake_proc_fops = {
 	.write = tp_sweep_wake_write_func,
 	.read =  tp_sweep_wake_read_func,
+	.open = simple_open,
+	.owner = THIS_MODULE,
+};
+
+static const struct file_operations tp_sweep_wake_implemented_proc_fops = {
+	.read =  tp_sweep_wake_implemented_read_func,
 	.open = simple_open,
 	.owner = THIS_MODULE,
 };
@@ -2718,6 +2741,12 @@ static int init_synaptics_proc(void)
 
 	prEntry_sweep_wake_tap = proc_create( "sweep_wake_enable", 0666, prEntry_tp, &tp_sweep_wake_proc_fops);
 	if(prEntry_sweep_wake_tap == NULL){
+		ret = -ENOMEM;
+		printk(KERN_INFO"init_synaptics_proc: Couldn't create proc entry\n");
+	}
+
+	prEntry_sweep_wake_tap_implemented = proc_create( "sweep_wake_enable_implemented", 0666, prEntry_tp, &tp_sweep_wake_implemented_proc_fops);
+	if(prEntry_sweep_wake_tap_implemented == NULL){
 		ret = -ENOMEM;
 		printk(KERN_INFO"init_synaptics_proc: Couldn't create proc entry\n");
 	}
