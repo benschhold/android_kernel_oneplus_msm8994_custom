@@ -18,6 +18,7 @@ obj-$(CONFIG_CPU_FREQ_GOV_ELEMENTALX)	+= cpufreq_elementalx.o
 obj-$(CONFIG_CPU_FREQ_GOV_ZZMOOVE)      += cpufreq_zzmoove.o
 obj-$(CONFIG_CPU_BOOST)			+= cpu-boost.o
 obj-$(CONFIG_CPU_FREQ_GOV_IRONACTIVE)	+= cpufreq_ironactive.o
+obj-$(CONFIG_CPU_FREQ_GOV_DESPAIR)      += cpufreq_despair.o
 
 obj-$(CONFIG_GENERIC_CPUFREQ_CPU0)	+= cpufreq-cpu0.o
 
