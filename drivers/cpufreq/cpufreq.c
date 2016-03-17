@@ -34,9 +34,9 @@ static unsigned int min_freq_hardlimit[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 static unsigned int max_freq_hardlimit[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
 #define CONFIG_MSM_CPU_FREQ_MIN_GROUP1 384000
-#define CONFIG_MSM_CPU_FREQ_MAX_GROUP1 1555200
+#define CONFIG_MSM_CPU_FREQ_MAX_GROUP1 1708800
 #define CONFIG_MSM_CPU_FREQ_MIN_GROUP2 384000
-#define CONFIG_MSM_CPU_FREQ_MAX_GROUP2 1766400
+#define CONFIG_MSM_CPU_FREQ_MAX_GROUP2 2054400
 
 /**
  * The "cpufreq driver" - the arch- or hardware-dependent low
