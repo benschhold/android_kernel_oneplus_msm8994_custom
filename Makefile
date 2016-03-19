@@ -1,7 +1,7 @@
 VERSION = 3
 PATCHLEVEL = 10
 SUBLEVEL = 84
-EXTRAVERSION =-benschholds-custom-kernel-v2.2
+EXTRAVERSION =-benschholds-custom-kernel-v2.3
 NAME = TOSSUG Baby Fish
 
 # *DOCUMENTATION*
