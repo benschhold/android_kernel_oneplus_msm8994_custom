@@ -363,13 +363,16 @@
 		};
 
 /* #ifdef VENDOR_EDIT // add by xcb for ramoops 2015-03-31 */
-		ramoops_mem: ramoops_region@0 {
-			linux,reserve-contiguous-region;
-			oem,reserve-region;//modify by jiachenghui for ramoops reserve region
-			//linux,remove-completely;//del by jiachenghui for ramoops reserve region
-			reg = <0 0xac000000 0 0x00100000>;//modify from 0x05800000 to 0xac000000 by jiachenghui for ramoops reserve region
-			label = "ramoops_mem";
-		};
+  		ramoops_mem: ramoops_region@0 {
+ 			linux,reserve-contiguous-region;
+ 			linux,reserve-region;
+			/* Hardboot: reserve 1MB of space
+			 * before ramoops address of 0x1fe00000
+			 */
+			reg = <0 0x1fd00000 0 0x00300000>;
+ 			linux,remove-completely;
+ 			label = "ramoops_mem";
+ 		};
 /* #endif VENDOR_EDIT */
 
 		param_mem: param_region@0 {
@@ -975,7 +978,7 @@
 		reg-names = "wdt-base";
 		interrupts = <0 3 0>, <0 4 0>;
 //liyunbing@BSP, 2015/05/21, WDT bark-time too short cause some task timeout  
-                #qcom,bark-time = <11000>;
+		#qcom,bark-time = <11000>;
                 qcom,bark-time = <15000>;
 		qcom,pet-time = <10000>;
 		qcom,ipi-ping;
@@ -1670,7 +1673,7 @@
 		reg-names = "core", "phy_csr";
 		// #ifdef VENDOR_EDIT
 		/*modify by jiachenghui from 0x00D191A4 to 0x00D191A7 for OTG 2015-04-22*/
-		/*change HS DC voltage-level to 0x0011 by jiachenghui for OTG detect issue 2015-05-23*/
+                /*change HS DC voltage-level to 0x0011 by jiachenghui for OTG detect issue 2015-05-23*/
 		qcom,hsphy-init = <0x00D187A7>;
                 //#endif /*VENDOR_EDIT*/
 		vdd-supply = <&pm8994_s2_corner>;
@@ -1991,10 +1994,23 @@
 
 /* #ifdef VENDOR_EDIT // add by xcb for ramoops 2015-03-31 */
 	ramoops {
-		compatible = "ramoops";
-		/*reg = <0x05800000 0x00100000>;*/
-		linux,contiguous-region = <&ramoops_mem>;
-	};
+ 		compatible = "ramoops";
+ 		status = "ok";
+ 
+ 		android,ramoops-buffer-start = <0x1fe00000>;
+ 		android,ramoops-buffer-size = <0x200000>;
+ 		android,ramoops-console-size = <0x100000>;
+ 		android,ramoops-record-size = <0x10000>;
+ 		android,ramoops-ftrace-size = <0x10000>;
+ 		android,ramoops-pmsg-size = <0x80000>;
+ 		android,ramoops-dump-oops = <0x1>;
+ 		linux,contiguous-region = <&ramoops_mem>;
+ 		android,ramoops-hole {
+ 			compatible = "qcom,msm-contig-mem";
+			/* Hardboot: reserve 1MB */
+			qcom,memblock-reserve = <0x1fd00000 0x00300000>;
+ 		};
+};
 /* #endif VENDOR_EDIT */
 
 
