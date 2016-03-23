@@ -378,8 +378,7 @@ CONFIG_FORCE_MAX_ZONEORDER=11
 #
 # Boot options
 #
-CONFIG_CMDLINE="androidboot.selinux=permissive setenforce 0"
-CONFIG_CMDLINE_EXTEND=y
+CONFIG_CMDLINE=""
 # CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE is not set
 # CONFIG_EFI is not set
 
