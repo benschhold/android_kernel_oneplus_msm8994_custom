@@ -265,7 +265,7 @@ static struct pll_clk a53_pll0 = {
 		.test_ctl_lo_val = 0x00010000,
 	},
 	.min_rate = 1209600000,
-	.max_rate = 2073600000,
+	.max_rate = 1996800000,
 	.base = &vbases[C0_PLL_BASE],
 	.c = {
 		.parent = &xo_ao.c,
@@ -303,7 +303,7 @@ static struct pll_clk a53_pll1 = {
 	/* Necessary since we'll be setting a rate before handoff on V1 */
 	.src_rate = 19200000,
 	.min_rate = 1209600000,
-	.max_rate = 2073600000,
+	.max_rate = 1996800000,
 	.base = &vbases[C0_PLL_BASE],
 	.c = {
 		.parent = &xo_ao.c,
