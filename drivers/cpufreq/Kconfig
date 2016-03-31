@@ -203,6 +203,12 @@ config CPU_FREQ_DEFAULT_GOV_BLU_ACTIVE
 	  loading your cpufreq low-level hardware driver, using the
 	  'interactive' governor for latency-sensitive workloads.
 
+config CPU_FREQ_DEFAULT_GOV_SMARTMAX
+	bool "smartmax"
+	select CPU_FREQ_GOV_SMARTMAX
+	help
+	  Use the CPUFreq governor 'optimax' as defaul
+
 endchoice
 
 config CPU_FREQ_GOV_PERFORMANCE
@@ -416,7 +422,10 @@ config CPU_FREQ_GOV_LIONHEART
 			 
 config CPU_FREQ_GOV_PEGASUSQ
 	tristate "'pegasusq' cpufreq policy governor"
- 
+
+config CPU_FREQ_GOV_SMARTMAX
+	tristate "'smartmax' cpufreq policy governor"
+	select CPU_FREQ_TABLE 
 
 config CPU_BOOST
 	tristate "Event base short term CPU freq boost"
