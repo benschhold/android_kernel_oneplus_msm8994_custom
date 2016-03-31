@@ -1,4 +1,4 @@
-CONFIG_LOCALVERSION="-benschholds-custom-kernel-v2.9"
+CONFIG_LOCALVERSION="-benschholds-custom-kernel-v3.0"
 CONFIG_KEXEC=y
 CONFIG_KEXEC_HARDBOOT=y
 CONFIG_STATE_NOTIFIER=y
