@@ -31,11 +31,11 @@
 #define DRIVER_VERSION                5
 #define DRIVER_SUBVER                 0
 
-#define DEFAULT_CPU_LOAD_THRESHOLD   (65)
+#define DEFAULT_CPU_LOAD_THRESHOLD   (50)
 #define MIN_CPU_LOAD_THRESHOLD       (10)
 
 #define HOTPLUG_ENABLED              (1)
-#define DEFAULT_HOTPLUG_STYLE         HOTPLUG_SCHED
+#define DEFAULT_HOTPLUG_STYLE         HOTPLUG_PERCORE
 #define DEFAULT_SCHED_MODE            BALANCED
 
 #define DEF_SAMPLING_MS	             (500)
