@@ -140,6 +140,24 @@ static int padzero(unsigned long elf_bss)
 #define ELF_BASE_PLATFORM NULL
 #endif
 
+/*
+ * Make use of get_random_int() to workaround an issue of entropy depletion
+ */
+ static void get_random_bytes_no_deplete(unsigned char *buf, size_t nbytes)
+{
+ 	unsigned char *p = buf;
+ 
+ 	while (nbytes) {
+ 		unsigned int random_variable;
+ 		size_t chunk = min(nbytes, sizeof(random_variable));
+ 
+ 		random_variable = get_random_int();
+ 		memcpy(p, &random_variable, chunk);
+ 		p += chunk;
+ 		nbytes -= chunk;
+	}
+}
+
 static int
 create_elf_tables(struct linux_binprm *bprm, struct elfhdr *exec,
 		unsigned long load_addr, unsigned long interp_load_addr)
@@ -201,7 +219,7 @@ create_elf_tables(struct linux_binprm *bprm, struct elfhdr *exec,
 	/*
 	 * Generate 16 random bytes for userspace PRNG seeding.
 	 */
-	get_random_bytes(k_rand_bytes, sizeof(k_rand_bytes));
+	get_random_bytes_no_deplete(k_rand_bytes, sizeof(k_rand_bytes));
 	u_rand_bytes = (elf_addr_t __user *)
 		       STACK_ALLOC(p, sizeof(k_rand_bytes));
 	if (__copy_to_user(u_rand_bytes, k_rand_bytes, sizeof(k_rand_bytes)))
