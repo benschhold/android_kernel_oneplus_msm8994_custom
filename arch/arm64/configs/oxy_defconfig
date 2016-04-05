@@ -1,4 +1,4 @@
-CONFIG_LOCALVERSION="-benschholds-custom-kernel-oxy-v3.1"
+CONFIG_LOCALVERSION="-benschholds-custom-kernel-oxy-v0.1"
 CONFIG_KEXEC=y
 CONFIG_KEXEC_HARDBOOT=y
 CONFIG_STATE_NOTIFIER=y
