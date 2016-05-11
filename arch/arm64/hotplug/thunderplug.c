@@ -20,7 +20,7 @@
 #include <linux/input.h>
 #include <linux/slab.h>
 #include <linux/cpu.h>
-#include <linux/powersuspend.h>
+#include <linux/lcd_notify.h>
 #include <linux/cpufreq.h>
 #include "thunderplug.h"
 
@@ -43,12 +43,14 @@
 #define MIN_CPU_UP_TIME              (750)
 #define TOUCH_BOOST_ENABLED          (0)
 
+static bool isSuspended = false;
 
+struct notifier_block lcd_worker;
 
 static int suspend_cpu_num = 2, resume_cpu_num = (NR_CPUS -1);
 static int endurance_level = 0;
 static int core_limit = NR_CPUS;
-static int tplug_hp_enabled = 1;
+
 static int now[8], last_time[8];
 
 static int sampling_time = DEF_SAMPLING_MS;
@@ -72,7 +74,7 @@ static struct workqueue_struct *tplug_boost_wq;
 static struct delayed_work tplug_boost;
 
 static struct workqueue_struct *tplug_resume_wq;
-
+static struct delayed_work tplug_resume_work;
 
 static unsigned int last_load[8] = { 0 };
 
@@ -379,7 +381,25 @@ static unsigned int get_curr_load(unsigned int cpu)
 
 	cur_load = 100 * (wall_time - idle_time) / wall_time;
 	return cur_load;
+}
 
+static void thunderplug_suspend(void)
+{
+	offline_cpus();
+
+	pr_info("%s: suspend\n", THUNDERPLUG);
+}
+
+static void __ref thunderplug_resume(void)
+{
+	cpus_online_all();
+
+	pr_info("%s: resume\n", THUNDERPLUG);
+}
+
+static void __cpuinit tplug_resume_work_fn(struct work_struct *work)
+{
+	thunderplug_resume();
 }
 
 static void __cpuinit tplug_work_fn(struct work_struct *work)
@@ -419,7 +439,7 @@ static void __cpuinit tplug_work_fn(struct work_struct *work)
 	if(cpu_online(i) && avg_load[i] > load_threshold && cpu_is_offline(i+1))
 	{
 	if(DEBUG)
-		
+		pr_info("%s : bringing back cpu%d\n", THUNDERPLUG,i);
 		if(!((i+1) > 7)) {
 			last_time[i+1] = ktime_to_ms(ktime_get());
 			cpu_up(i+1);
@@ -428,7 +448,7 @@ static void __cpuinit tplug_work_fn(struct work_struct *work)
 	else if(cpu_online(i) && avg_load[i] < load_threshold && cpu_online(i+1))
 	{
 		if(DEBUG)
-			
+			pr_info("%s : offlining cpu%d\n", THUNDERPLUG,i);
 			if(!(i+1)==0) {
 				now[i+1] = ktime_to_ms(ktime_get());
 				if((now[i+1] - last_time[i+1]) > MIN_CPU_UP_TIME)
@@ -437,29 +457,53 @@ static void __cpuinit tplug_work_fn(struct work_struct *work)
 		}
 	}
 
-if(tplug_hp_enabled != 0)
+#ifdef CONFIG_SCHED_HMP
+    if(tplug_hp_style == 1 && !isSuspended)
+#else
+	if(tplug_hp_enabled != 0 && !isSuspended)
+#endif
 		queue_delayed_work_on(0, tplug_wq, &tplug_work,
 			msecs_to_jiffies(sampling_time));
-	else 
-		cpus_online_all();
+	else {
+		if(!isSuspended)
+			cpus_online_all();
+		else
+			thunderplug_suspend();
 	}
-static void thunderplug_suspend(struct power_suspend *h)
-	
-{
-	offline_cpus();
 
-pr_info("%s: suspend\n", THUNDERPLUG);
 }
-static void __ref thunderplug_resume(struct power_suspend *h)
+
+static int lcd_notifier_callback(struct notifier_block *nb,
+                                 unsigned long event, void *data)
 {
-cpus_online_all();
-pr_info("%s: resume\n", THUNDERPLUG);
+       switch (event) {
+       case LCD_EVENT_ON_START:
+			isSuspended = false;
+#ifdef CONFIG_SCHED_HMP
+			if(tplug_hp_style==1)
+#else
+			if(tplug_hp_enabled)
+#endif
+				queue_delayed_work_on(0, tplug_wq, &tplug_work,
+								msecs_to_jiffies(sampling_time));
+			else
+				queue_delayed_work_on(0, tplug_resume_wq, &tplug_resume_work,
+		                      msecs_to_jiffies(10));
+			pr_info("thunderplug : resume called\n");
+               break;
+       case LCD_EVENT_ON_END:
+               break;
+       case LCD_EVENT_OFF_START:
+               break;
+       case LCD_EVENT_OFF_END:
+			isSuspended = true;
+			pr_info("thunderplug : suspend called\n");
+               break;
+       default:
+               break;
+       }
 
-
-
-
-
-    
+       return 0;
 }
 
 /* Thunderplug load balancer */
@@ -633,12 +677,6 @@ static struct attribute_group thunderplug_attr_group =
         .attrs = thunderplug_attrs,
     };
 
-static struct power_suspend thunderplug_power_suspend_handler = 
-	{
-		.suspend = thunderplug_suspend,
-		.resume = thunderplug_resume,
-	};
-
 static struct kobject *thunderplug_kobj;
 
 static int __init thunderplug_init(void)
@@ -662,7 +700,9 @@ static int __init thunderplug_init(void)
                 kobject_put(thunderplug_kobj);
         }
 
-		register_power_suspend(&thunderplug_power_suspend_handler);
+		lcd_worker.notifier_call = lcd_notifier_callback;
+
+        lcd_register_client(&lcd_worker);
 
 		pr_info("%s : registering input boost", THUNDERPLUG);
 		ret = input_register_handler(&tplug_input_handler);
@@ -681,6 +721,7 @@ static int __init thunderplug_init(void)
 				WQ_HIGHPRI | WQ_UNBOUND, 1);
 
 		INIT_DELAYED_WORK(&tplug_work, tplug_work_fn);
+		INIT_DELAYED_WORK(&tplug_resume_work, tplug_resume_work_fn);
 		INIT_DELAYED_WORK(&tplug_boost, tplug_boost_work_fn);
 		queue_delayed_work_on(0, tplug_wq, &tplug_work,
 		                      msecs_to_jiffies(10));
