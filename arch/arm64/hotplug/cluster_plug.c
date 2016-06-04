@@ -71,14 +71,14 @@ struct cp_cpu_info {
 
 static DEFINE_PER_CPU(struct cp_cpu_info, cp_info);
 
-static bool is_big_cpu(unsigned int cpu)
-{
-	return cpu < N_BIG_CPUS;
-}
-
 static bool is_little_cpu(unsigned int cpu)
 {
-	return !is_big_cpu(cpu);
+	return cpu < N_LITTLE_CPUS;
+}
+
+static bool is_big_cpu(unsigned int cpu)
+{
+	return !is_little_cpu(cpu);
 }
 
 static unsigned int get_delta_cpu_load_and_update(unsigned int cpu)
