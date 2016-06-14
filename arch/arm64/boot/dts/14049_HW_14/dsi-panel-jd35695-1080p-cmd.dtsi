@@ -140,6 +140,7 @@ dsi_jd35695_1080_cmd: qcom,mdss_dsi_jd35695_1080p_cmd {
 				      05 01 00 00 60 00 02 29 00
 
 				      ];
+
 			      qcom,mdss-dsi-color-test-on-command-state = "dsi_lp_mode";
 			      qcom,mdss-dsi-color-test-off-command-state = "dsi_lp_mode";
 

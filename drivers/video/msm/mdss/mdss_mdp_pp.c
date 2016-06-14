@@ -1371,18 +1371,22 @@ int mdss_mdp_pipe_pp_setup(struct mdss_mdp_pipe *pipe, u32 *op)
 	return ret;
 }
 
-void mdss_mdp_pipe_sspp_term(struct mdss_mdp_pipe *pipe)
+void mdss_mdp_pipe_pp_clear(struct mdss_mdp_pipe *pipe)
 {
 	struct pp_hist_col_info *hist_info;
 
-	if (pipe) {
-		if (pipe->pp_res.hist.col_en) {
-			hist_info = &pipe->pp_res.hist;
-			pp_hist_disable(hist_info);
-		}
-		memset(&pipe->pp_cfg, 0, sizeof(struct mdp_overlay_pp_params));
-		memset(&pipe->pp_res, 0, sizeof(struct mdss_pipe_pp_res));
+	if (!pipe) {
+		pr_err("Invalid pipe context passed, %p\n",
+			pipe);
+		return;
 	}
+	if (mdss_mdp_pipe_is_yuv(pipe)) {
+		hist_info = &pipe->pp_res.hist;
+		pp_hist_disable(hist_info);
+	}
+
+	memset(&pipe->pp_res.pp_sts, 0, sizeof(struct pp_sts_type));
+	pipe->pp_cfg.config_ops = 0;
 }
 
 int mdss_mdp_pipe_sspp_setup(struct mdss_mdp_pipe *pipe, u32 *op)
@@ -2738,9 +2742,9 @@ static u32 pcc_rescale(u32 raw, u32 user)
 {
 	int val = 0;
 
-	if (raw == 0 || raw > 32768)
+	if (raw > 32768)
 		raw = 32768;
-	if (user == 0 || user > 32768)
+	if (user > 32768)
 		user = 32768;
 	val = 32768 - ((32768 - raw) + (32768 - user));
 	return val < 100 ? 100 : val;
@@ -2770,10 +2774,15 @@ static void pcc_combine(struct mdp_pcc_cfg_data *raw,
 	// there is a mode switch. we only care about the base
 	// coefficients from the user config.
 
+	if (!r_en || (raw->r.r == 0 && raw->g.g == 0 && raw->b.b == 0))
+		raw->r.r = raw->g.g = raw->b.b = 32768;
+	if (!u_en || (user->r.r == 0 && user->g.g == 0 && user->b.b ==0))
+		user->r.r = user->g.g = user->b.b = 32768;
+
 	memcpy(real, raw, sizeof(struct mdp_pcc_cfg_data));
-	real->r.r = pcc_rescale((r_en ? raw->r.r : 0), (u_en ? user->r.r : 0));
-	real->g.g = pcc_rescale((r_en ? raw->g.g : 0), (u_en ? user->g.g : 0));
-	real->b.b = pcc_rescale((r_en ? raw->b.b : 0), (u_en ? user->b.b : 0));
+	real->r.r = pcc_rescale(raw->r.r, user->r.r);
+	real->g.g = pcc_rescale(raw->g.g, user->g.g);
+	real->b.b = pcc_rescale(raw->b.b, user->b.b);
 	if (r_en && u_en)
 		real->ops = r_ops | u_ops;
 	else if (r_en)
