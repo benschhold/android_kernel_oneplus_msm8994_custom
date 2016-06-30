@@ -82,7 +82,7 @@ static int fake_authentic = 0;
 #define CHG_CURRENT_500MA                                     500
 #define CHG_CURRENT_300MA                                     300
 #define CHG_CURRENT_900MA                                     900
-#define CHG_CURRENT_1500MA                                    1500
+#define CHG_CURRENT_1500MA                                    2000
 #define CHARGER_SOFT_OVP_VOLTAGE		5800
 #define CHARGER_SOFT_UVP_VOLTAGE		4300
 #define CHARGER_VOLTAGE_NORMAL		    5000
@@ -1145,23 +1145,23 @@ for(current_ma=1200;current_ma<= 1900;current_ma+= 100)
 	for (i = 0; i < MAX_COUNT + 300; i++) {
 		if (!chip->usb_present) {
 			//goto aicl_err;
-			smbchg_set_high_usb_chg_current(chip, 1500);
-			chip->aicl_current = 1500;
+			smbchg_set_high_usb_chg_current(chip, 2000);
+			chip->aicl_current = 2000;
 			chip->usb_target_current_ma=chip->aicl_current;/* yangfangbiao@oneplus.cn,20150710  Add for usb thermal current limit */
 			//chip->aicl_interrupt = true;
 			return 0;
 		}
 		if (i == 200)
-			smbchg_set_fastchg_current(chip, 1600);
+			smbchg_set_fastchg_current(chip, 2000);
 		else if (i == 400)
-			smbchg_set_fastchg_current(chip, 1850);
+			smbchg_set_fastchg_current(chip, 2000);
 		else if (i == 600)
 			smbchg_set_fastchg_current(chip, 2000);
 		chg_vol = get_prop_charger_voltage_now(chip);
 		if (chg_vol < SOFT_AICL_VOL - 30) {
 
-			smbchg_set_high_usb_chg_current(chip, 1850);
-			chip->aicl_current = 1850;
+			smbchg_set_high_usb_chg_current(chip, 2000);
+			chip->aicl_current = 2000;
 			chip->usb_target_current_ma=chip->aicl_current;/* yangfangbiao@oneplus.cn,20150710  Add for usb thermal current limit */
 			if (!chip->usb_present) {
 				//chip->aicl_interrupt = true;
@@ -1458,7 +1458,7 @@ static int smbchg_charging_en(struct smbchg_chip *chip, bool en)
 #define CURRENT_150_MA		150
 #define CURRENT_500_MA		500
 #define CURRENT_900_MA		900
-#define CURRENT_1500_MA		1500
+#define CURRENT_1500_MA		2000
 #define SUSPEND_CURRENT_MA	2
 #define ICL_OVERRIDE_BIT	BIT(2)
 static int smbchg_usb_suspend(struct smbchg_chip *chip, bool suspend)
@@ -4279,7 +4279,7 @@ static bool is_src_detect_high(struct smbchg_chip *chip)
 #else
 #define DEFAULT_SDP_MA		100
 #endif
-#define DEFAULT_CDP_MA		1500
+#define DEFAULT_CDP_MA		2000
 static void handle_usb_insertion(struct smbchg_chip *chip)
 {
 	struct power_supply *parallel_psy = get_parallel_psy(chip);
@@ -7597,8 +7597,8 @@ static int handle_batt_temp_hot(struct smbchg_chip *chip)
 	{
 		chip->is_power_changed = false;
 		pr_debug("%s\n", __func__);
-		smbchg_set_usb_current_max(chip, calc_thermal_limited_current(chip, 1500));
-		chip->usb_target_current_ma=1500;/* yangfangbiao@oneplus.cn,20150710  Add for usb thermal current limit */
+		smbchg_set_usb_current_max(chip, calc_thermal_limited_current(chip, 2000));
+		chip->usb_target_current_ma=2000;/* yangfangbiao@oneplus.cn,20150710  Add for usb thermal current limit */
 		smbchg_rerun_aicl(chip);
 		smbchg_charging_en(chip, 0);
 
