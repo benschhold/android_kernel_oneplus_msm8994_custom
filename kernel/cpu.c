@@ -19,10 +19,14 @@
 #include <linux/mutex.h>
 #include <linux/gfp.h>
 #include <linux/suspend.h>
+#include <linux/module.h>
 
 #include <trace/events/sched.h>
 
 #include "smpboot.h"
+
+static uint32_t onecorealive = 0;
+module_param_named(letonecorealive, onecorealive, int, 0664);
 
 #ifdef CONFIG_SMP
 /* Serializes the updates to cpu_online_mask, cpu_present_mask */
@@ -370,6 +374,21 @@ int __ref cpu_down(unsigned int cpu)
 	int err;
 
 	cpu_maps_update_begin();
+
+
+
+// AP: Keep CPU cores 0 and 4 always on
+
+
+if (onecorealive == 1) 
+  {
+	if ((cpu == 0) || (cpu == 4))
+	{
+		err = -EBUSY;
+    	goto out;
+	}
+  }
+
 
 	if (cpu_hotplug_disabled) {
 		err = -EBUSY;
