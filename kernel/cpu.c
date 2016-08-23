@@ -25,7 +25,7 @@
 
 #include "smpboot.h"
 
-static uint32_t onecorealive = 0;
+static uint32_t onecorealive = 1;
 module_param_named(letonecorealive, onecorealive, int, 0664);
 
 #ifdef CONFIG_SMP
