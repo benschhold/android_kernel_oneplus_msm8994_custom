@@ -31,11 +31,11 @@
 #define DRIVER_VERSION                5
 #define DRIVER_SUBVER                 0
 
-#define DEFAULT_CPU_LOAD_THRESHOLD   (65)
+#define DEFAULT_CPU_LOAD_THRESHOLD   (45)
 #define MIN_CPU_LOAD_THRESHOLD       (10)
 
 #define HOTPLUG_ENABLED              (0)
-#define DEFAULT_HOTPLUG_STYLE         HOTPLUG_SCHED
+#define DEFAULT_HOTPLUG_STYLE         HOTPLUG_PERCORE
 #define DEFAULT_SCHED_MODE            BALANCED
 
 #define DEF_SAMPLING_MS	             (500)
@@ -47,9 +47,9 @@ static bool isSuspended = false;
 
 struct notifier_block lcd_worker;
 
-static int suspend_cpu_num = 2, resume_cpu_num = (NR_CPUS -1);
+static int suspend_cpu_num = 2, resume_cpu_num = (8 -1);
 static int endurance_level = 0;
-static int core_limit = NR_CPUS;
+static int core_limit = 8;
 
 static int now[8], last_time[8];
 
@@ -97,21 +97,21 @@ static inline void offline_cpus(void)
 	unsigned int cpu;
 	switch(endurance_level) {
 		case 1:
-			if(suspend_cpu_num > NR_CPUS / 2 )
-				suspend_cpu_num = NR_CPUS / 2;
+			if(suspend_cpu_num > 8 / 2 )
+				suspend_cpu_num = 8 / 2;
 		break;
 		case 2:
-			if( NR_CPUS >=4 && suspend_cpu_num > NR_CPUS / 4)
-				suspend_cpu_num = NR_CPUS / 4;
+			if( 8 >=4 && suspend_cpu_num > 8 / 4)
+				suspend_cpu_num = 8 / 4;
 		break;
 		default:
 		break;
 	}
-	for(cpu = NR_CPUS - 1; cpu > (suspend_cpu_num - 1); cpu--) {
+	for(cpu = 8 - 1; cpu > (suspend_cpu_num - 1); cpu--) {
 		if (cpu_online(cpu))
 			cpu_down(cpu);
 	}
-	pr_info("%s: %d cpus were offlined\n", THUNDERPLUG, (NR_CPUS - suspend_cpu_num));
+	pr_info("%s: %d cpus were offlined\n", THUNDERPLUG, (8 - suspend_cpu_num));
 }
 
 static inline void cpus_online_all(void)
@@ -119,15 +119,15 @@ static inline void cpus_online_all(void)
 	unsigned int cpu;
 	switch(endurance_level) {
 	case 1:
-		if(resume_cpu_num > (NR_CPUS / 2) - 1 || resume_cpu_num == 1)
-			resume_cpu_num = ((NR_CPUS / 2) - 1);
+		if(resume_cpu_num > (8 / 2) - 1 || resume_cpu_num == 1)
+			resume_cpu_num = ((8 / 2) - 1);
 	break;
 	case 2:
-		if( NR_CPUS >= 4 && resume_cpu_num > ((NR_CPUS / 4) - 1))
-			resume_cpu_num = ((NR_CPUS / 4) - 1);
+		if( 8 >= 4 && resume_cpu_num > ((8 / 4) - 1))
+			resume_cpu_num = ((8 / 4) - 1);
 	break;
 	case 0:
-			resume_cpu_num = (NR_CPUS - 1);
+			resume_cpu_num = (8 - 1);
 	break;
 	default:
 	break;
@@ -147,7 +147,7 @@ static inline void cpus_online_all(void)
 static void __ref tplug_boost_work_fn(struct work_struct *work)
 {
 	int cpu;
-	for(cpu = 1; cpu < NR_CPUS; cpu++) {
+	for(cpu = 1; cpu < 8; cpu++) {
 		if(cpu_is_offline(cpu))
 			cpu_up(cpu);
 	}
@@ -230,7 +230,7 @@ static ssize_t thunderplug_suspend_cpus_store(struct kobject *kobj, struct kobj_
 {
 	int val;
 	sscanf(buf, "%d", &val);
-	if(val < 1 || val > NR_CPUS)
+	if(val < 1 || val > 8)
 		pr_info("%s: suspend cpus off-limits\n", THUNDERPLUG);
 	else
 		suspend_cpu_num = val;
@@ -253,7 +253,7 @@ static ssize_t __ref thunderplug_endurance_store(struct kobject *kobj, struct ko
 	case 1:
 	case 2:
 		if(endurance_level!=val &&
-		   !(endurance_level > 1 && NR_CPUS < 4)) {
+		   !(endurance_level > 1 && 8 < 4)) {
 		endurance_level = val;
 		offline_cpus();
 		cpus_online_all();
@@ -378,16 +378,16 @@ static void __cpuinit tplug_work_fn(struct work_struct *work)
 	switch(endurance_level)
 	{
 	case 0:
-		core_limit = NR_CPUS;
+		core_limit = 8;
 	break;
 	case 1:
-		core_limit = NR_CPUS / 2;
+		core_limit = 8 / 2;
 	break;
 	case 2:
-		core_limit = NR_CPUS / 4;
+		core_limit = 8 / 4;
 	break;
 	default:
-		core_limit = NR_CPUS;
+		core_limit = 8;
 	break;
 	}
 
