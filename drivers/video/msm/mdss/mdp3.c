@@ -1642,12 +1642,12 @@ int mdp3_self_map_iommu(struct ion_client *client, struct ion_handle *handle,
 		}
 	} else {
 		if (iommu_meta->flags != iommu_flags) {
-			pr_err("%s: handle %pK is already mapped with diff flag\n",
+			pr_err("%s: hndl %pK already mapped with diff flag\n",
 				__func__, handle);
 			ret = -EINVAL;
 			goto out_unlock;
 		} else if (iommu_meta->mapped_size != iova_length) {
-			pr_err("%s: handle %pK is already mapped with diff len\n",
+			pr_err("%s: hndl %pK already mapped with diff len\n",
 				__func__, handle);
 			ret = -EINVAL;
 			goto out_unlock;
