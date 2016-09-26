@@ -55,12 +55,24 @@
 
 #include <linux/project_info.h>
 
+#ifdef CONFIG_MSM_HOTPLUG
+#include <linux/msm_hotplug.h>
+#include <linux/workqueue.h>
+#endif
+
 #define FPC1020_RESET_LOW_US 1000
 #define FPC1020_RESET_HIGH1_US 100
 #define FPC1020_RESET_HIGH2_US 1250
 #define FPC_TTW_HOLD_TIME 1000
 
+/* Unused key value to avoid interfering with active keys */
+#define KEY_FINGERPRINT 0x2ee
+
 #define ONEPLUS_EDIT  //Onplus modify for msm8996 platform and 15801 HW
+
+#ifdef CONFIG_MSM_HOTPLUG
+extern void msm_hotplug_resume_timeout(void);
+#endif
 
 static const char * const pctl_names[] = {
 	"fpc1020_spi_active",
@@ -867,7 +879,13 @@ static struct attribute *attributes[] = {
 static const struct attribute_group attribute_group = {
 	.attrs = attributes,
 };
-
+#ifdef CONFIG_MSM_HOTPLUG
+static void msm_hotplug_resume_call(struct work_struct *msm_hotplug_resume_call_work)
+{
+	msm_hotplug_resume_timeout();
+}
+static DECLARE_WORK(msm_hotplug_resume_call_work, msm_hotplug_resume_call);
+#endif
 int fpc1020_input_init(struct fpc1020_data *fpc1020)
 {
 	int error = 0;
@@ -955,6 +973,13 @@ static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 		wake_lock_timeout(&fpc1020->ttw_wl, msecs_to_jiffies(FPC_TTW_HOLD_TIME));
 	}
 */
+#ifdef CONFIG_MSM_HOTPLUG
+		if (msm_enabled && msm_hotplug_scr_suspended &&
+		   !msm_hotplug_fingerprint_called) {
+			msm_hotplug_fingerprint_called = true;
+			schedule_work(&msm_hotplug_resume_call_work);
+		}
+#endif
 	wake_lock_timeout(&fpc1020->ttw_wl, msecs_to_jiffies(FPC_TTW_HOLD_TIME));//changhua add for KeyguardUpdateMonitor: fingerprint acquired, grabbing fp wakelock
 	sysfs_notify(&fpc1020->dev->kobj, NULL, dev_attr_irq.attr.name);
 
