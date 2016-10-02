@@ -35,9 +35,9 @@ static unsigned int min_freq_hardlimit[2] = {0, 0};
 static unsigned int max_freq_hardlimit[2] = {0, 0};
 
 #define CONFIG_MSM_CPU_FREQ_MIN_GROUP1 302400
-#define CONFIG_MSM_CPU_FREQ_MAX_GROUP1 1708800
+#define CONFIG_MSM_CPU_FREQ_MAX_GROUP1 1804800
 #define CONFIG_MSM_CPU_FREQ_MIN_GROUP2 302400
-#define CONFIG_MSM_CPU_FREQ_MAX_GROUP2 2054400
+#define CONFIG_MSM_CPU_FREQ_MAX_GROUP2 2208000
 
 /* HACK: Prevent big cluster turned off when changing governor settings. */
 #ifdef CONFIG_MSM_HOTPLUG
