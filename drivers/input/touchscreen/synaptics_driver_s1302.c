@@ -827,8 +827,10 @@ static void synaptics_ts_report(struct synaptics_ts_data *ts )
     }
     if( inte & 0x10) {
 #ifdef VENDOR_EDIT //WayneChang, 2015/12/29, add flag to enable virtual key
-		if(virtual_key_enable && !ts->stop_keypad){
+		if(virtual_key_enable){
+	if (!ts->stop_keypad) {
             int_virtual_key(ts);
+	}
         }
 		else{if (!ts->stop_keypad){
 			int_key(ts); }
