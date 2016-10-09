@@ -48,6 +48,12 @@
 #include <linux/wakelock.h>
 #include <linux/input.h>
 
+#ifdef CONFIG_MSM_HOTPLUG
+#include <linux/msm_hotplug.h>
+#include <linux/workqueue.h>
+#endif
+
+
 #ifdef CONFIG_FB
 #include <linux/fb.h>
 #include <linux/notifier.h>
@@ -59,6 +65,10 @@
 #define FPC1020_RESET_HIGH1_US 100
 #define FPC1020_RESET_HIGH2_US 1250
 #define FPC_TTW_HOLD_TIME 1000
+
+#ifdef CONFIG_MSM_HOTPLUG
+extern void msm_hotplug_resume_timeout(void);
+#endif
 
 /* Unused key value to avoid interfering with active keys */
 #define KEY_FINGERPRINT 0x2ee
@@ -962,6 +972,13 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
 	return 0;
 }
 #endif
+#ifdef CONFIG_MSM_HOTPLUG
+static void __cpuinit msm_hotplug_resume_call(struct work_struct *msm_hotplug_resume_call_work)
+{
+	msm_hotplug_resume_timeout();
+}
+static DECLARE_WORK(msm_hotplug_resume_call_work, msm_hotplug_resume_call);
+#endif
 
 static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 {
@@ -976,6 +993,14 @@ static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 		wake_lock_timeout(&fpc1020->ttw_wl, msecs_to_jiffies(FPC_TTW_HOLD_TIME));
 	}
 */
+#ifdef CONFIG_MSM_HOTPLUG
+		if (msm_enabled && msm_hotplug_scr_suspended &&
+		   !msm_hotplug_fingerprint_called) {
+			msm_hotplug_fingerprint_called = true;
+      		schedule_work(&msm_hotplug_resume_call_work);
+		}
+#endif
+
 	wake_lock_timeout(&fpc1020->ttw_wl, msecs_to_jiffies(FPC_TTW_HOLD_TIME));//changhua add for KeyguardUpdateMonitor: fingerprint acquired, grabbing fp wakelock
 	sysfs_notify(&fpc1020->dev->kobj, NULL, dev_attr_irq.attr.name);
 
