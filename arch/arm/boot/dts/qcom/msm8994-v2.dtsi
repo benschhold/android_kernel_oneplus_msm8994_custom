@@ -341,7 +341,7 @@
 
 /* GPU overrides */
 &msm_gpu {
-	qcom,initial-pwrlevel = <6>;
+	qcom,initial-pwrlevel = <5>;
 	qcom,msm-bus,num-cases = <10>;
 	qcom,msm-bus,vectors-KBps =
 		<26 512 0 0>,
@@ -415,14 +415,7 @@
 			qcom,bus-min = <0>;
 			qcom,bus-max = <0>;
 		};
-		qcom,gpu-pwrlevel@7 {
-			reg = <7>;
-			qcom,gpu-freq = <27000000>;
-			qcom,bus-freq = <0>;
-			qcom,bus-min = <0>;
-			qcom,bus-max = <0>;
-		};
-	};
+};
 
 	/*
 	 * qcom,ocmem-bus-client defines
