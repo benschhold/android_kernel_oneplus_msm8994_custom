@@ -730,7 +730,7 @@ static void reschedule_hotplug_work(void)
                   msecs_to_jiffies(hotplug.update_rate));
 }
 
-static void __cpuinit msm_hotplug_work(struct work_struct *work)
+static void  msm_hotplug_work(struct work_struct *work)
 {
     unsigned int i, target = 0, online_little;
 
@@ -832,7 +832,7 @@ reschedule:
     reschedule_hotplug_work();
 }
 
-static void __cpuinit msm_hotplug_suspend(void)
+static void  msm_hotplug_suspend(void)
 {
     int online_cpus, online_cpus_big;
 
@@ -874,7 +874,7 @@ static void __cpuinit msm_hotplug_suspend(void)
     return;
 }
 
-static void __cpuinit msm_hotplug_resume(void)
+static void  msm_hotplug_resume(void)
 {
     int required_reschedule = 0, required_wakeup = 0, online_cpus, online_cpus_big;
 
@@ -921,7 +921,7 @@ static void __cpuinit msm_hotplug_resume(void)
     return;
 }
 
-void __cpuinit msm_hotplug_resume_timeout(void)
+void  msm_hotplug_resume_timeout(void)
 {
     if (timeout_enabled || !hotplug.suspended)
         return;
@@ -932,7 +932,7 @@ void __cpuinit msm_hotplug_resume_timeout(void)
 }
 EXPORT_SYMBOL(msm_hotplug_resume_timeout);
 
-static int __cpuinit msm_hotplug_start(int start_immediately)
+static int  msm_hotplug_start(int start_immediately)
 {
     int cpu, ret = 0;
     struct down_lock *dl;
@@ -999,7 +999,7 @@ err_out:
     return ret;
 }
 
-static void __cpuinit msm_hotplug_stop(void)
+static void  msm_hotplug_stop(void)
 {
     int cpu;
     struct down_lock *dl;
@@ -1050,7 +1050,7 @@ static ssize_t show_enable_hotplug(struct device *dev,
     return sprintf(buf, "%u\n", msm_enabled);
 }
 
-static ssize_t __cpuinit store_enable_hotplug(struct device *dev,
+static ssize_t  store_enable_hotplug(struct device *dev,
                     struct device_attribute *msm_hotplug_attrs,
                     const char *buf, size_t count)
 {
@@ -1573,7 +1573,7 @@ static struct attribute_group attr_group = {
 
 /************************** sysfs end ************************/
 
-static int __cpuinit msm_hotplug_probe(struct platform_device *pdev)
+static int  msm_hotplug_probe(struct platform_device *pdev)
 {
     int ret = 0;
     struct kobject *module_kobj;
@@ -1607,7 +1607,7 @@ static struct platform_device msm_hotplug_device = {
     .id = -1,
 };
 
-static int __cpuinit msm_hotplug_remove(struct platform_device *pdev)
+static int  msm_hotplug_remove(struct platform_device *pdev)
 {
     if (msm_enabled)
         msm_hotplug_stop();
@@ -1624,7 +1624,7 @@ static struct platform_driver msm_hotplug_driver = {
     },
 };
 
-static int __cpuinit msm_hotplug_fb_notifier_callback(struct notifier_block *self,
+static int  msm_hotplug_fb_notifier_callback(struct notifier_block *self,
                 unsigned long event, void *data)
 {
     struct fb_event *evdata = data;
