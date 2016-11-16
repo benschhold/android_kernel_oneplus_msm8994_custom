@@ -996,11 +996,9 @@ static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 	/* Make sure 'wakeup_enabled' is updated before using it
 	** since this is interrupt context (other thread...) */
 	smp_rmb();
-/*
+
 	if (fpc1020->wakeup_enabled ) {
 		wake_lock_timeout(&fpc1020->ttw_wl, msecs_to_jiffies(FPC_TTW_HOLD_TIME));
-	}
-*/
 #ifdef CONFIG_MSM_HOTPLUG
 		if (msm_enabled && msm_hotplug_scr_suspended &&
 		   !msm_hotplug_fingerprint_called) {
@@ -1008,6 +1006,9 @@ static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
       		schedule_work(&msm_hotplug_resume_call_work);
 		}
 #endif
+	}
+
+
 
 	wake_lock_timeout(&fpc1020->ttw_wl, msecs_to_jiffies(FPC_TTW_HOLD_TIME));//changhua add for KeyguardUpdateMonitor: fingerprint acquired, grabbing fp wakelock
 	sysfs_notify(&fpc1020->dev->kobj, NULL, dev_attr_irq.attr.name);
