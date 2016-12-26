@@ -2,7 +2,7 @@ qcom,oneplus_default_3200mah {
 	qcom,max-voltage-uv = <4320000>;
 	qcom,nom-batt-capacity-mah = <3300>;
 	qcom,v-cutoff-uv = <3600000>;
-	qcom,chg-term-ua = <150000>;
+	qcom,chg-term-ua = <200000>;
 	qcom,batt-id-kohm = <1>;
 	qcom,battery-beta = <0>;
 	qcom,battery-type = "Unknown Battery";
