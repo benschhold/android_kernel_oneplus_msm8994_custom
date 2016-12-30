@@ -1,0 +1,9 @@
+TOOLCHAIN_DIR=/home/Suzu.memeYa/toolchain/bin
+KERNEL_DIR=/home/Suzu.memeYa/android_kernel_oneplus_msm8994_custom
+KERN_IMG=$KERNEL_DIR/arch/arm64/boot/Image.gz-dtb                                  
+export ARCH=arm64                                                                  export KBUILD_BUILD_USER="Suzumiya"
+export KBUILD_BUILD_HOST="The_literary_club"
+STRIP="home/Suzu.memeYa/toolchain/bin/aarch64-linux-android-strip"
+export CCOMPILE=$CROSS_COMPILE
+export CROSS_COMPILE=aarch64-linux-android-
+export PATH=$PATH:/home/Suzu.memeYa/toolchain/bin
