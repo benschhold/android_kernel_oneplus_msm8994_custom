@@ -22,10 +22,10 @@ extern int charge_info_level_req;
 extern int charger_type;
 
 #define AC_CHARGE_LEVEL_DEFAULT 2000	// 0 = stock charging logic will apply
-#define AC_CHARGE_LEVEL_MIN 240
+#define AC_CHARGE_LEVEL_MIN 360
 #define AC_CHARGE_LEVEL_MAX 2000
 
-#define USB_CHARGE_LEVEL_DEFAULT 1500	// 0 = stock charging logic will apply
+#define USB_CHARGE_LEVEL_DEFAULT 2000	// 0 = stock charging logic will apply
 #define USB_CHARGE_LEVEL_MIN 200
 #define USB_CHARGE_LEVEL_MAX 2000
 
