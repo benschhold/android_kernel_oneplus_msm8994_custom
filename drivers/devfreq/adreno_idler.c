@@ -2,6 +2,7 @@
  * Author: Park Ju Hyung aka arter97 <qkrwngud825@gmail.com>
  *
  * Copyright 2015 Park Ju Hyung
+ * Copyright 2016 Joe Maples
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -29,6 +30,7 @@
 
 #include <linux/module.h>
 #include <linux/devfreq.h>
+#include <linux/display_state.h>
 #include <linux/msm_adreno_devfreq.h>
 
 #define ADRENO_IDLER_MAJOR_VERSION 1
@@ -39,7 +41,7 @@
    Any workload higher than this will be treated as a non-idle workload.
    Adreno idler will more actively try to ramp down the frequency
    if this is set to a higher value. */
-static unsigned long idleworkload = 1000;
+static unsigned long idleworkload = 7000;
 module_param_named(adreno_idler_idleworkload, idleworkload, ulong, 0664);
 
 /* Number of events to wait before ramping down the frequency.
@@ -64,6 +66,9 @@ static unsigned int idlecount = 0;
 int adreno_idler(struct devfreq_dev_status stats, struct devfreq *devfreq,
 		 unsigned long *freq)
 {
+	/* Boolean to let us know if the display is on*/
+	bool display_on = is_display_on();
+
 	if (!adreno_idler_active)
 		return 0;
 
@@ -82,6 +87,10 @@ int adreno_idler(struct devfreq_dev_status stats, struct devfreq *devfreq,
 			idlecount--;
 			return 1;
 		}
+	} else if (!display_on) {
+		/* GPU shouldn't be used for much while display is off, so ramp down the frequency */
+		*freq = devfreq->profile->freq_table[devfreq->profile->max_state - 1];
+		return 1;
 	} else {
 		idlecount = 0;
 		/* Do not return 1 here and allow rest of the algorithm to
